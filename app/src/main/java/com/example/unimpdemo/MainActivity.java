@@ -1,6 +1,7 @@
 package com.example.unimpdemo;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -47,6 +48,7 @@ public class MainActivity extends Activity {
     Handler mHandler;
     /** unimp小程序实例缓存**/
     HashMap<String, IUniMP> mUniMPCaches = new HashMap<>();
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,12 +88,38 @@ public class MainActivity extends Activity {
         });
 
 
+        // NOTE：白屏复现操作步骤
+        // 1. 进入 App，进入步骤2
+        // 2. 点击按钮 button1，进入小程序，看是否白屏，如果没有白屏，则进入步骤3
+        // 3. 退出app，进入步骤1
+        //
+        // 如此操作几番，就会出现白屏现象，白屏时，logcat 报错:
+        // 2024-11-21 17:54:41.972 25955-25964 WeexCore                com.example.unimpdemo                E  weex_runtime_v2_v8.cpp:528, createInstanceContext and ExecuteJavaScript Error :Uncaught TypeError: Cannot read property 'setStatusBarStyle' of undefined
+        //                                                                                                     at restoreGlobal (uni-jsframework.js:1:193144)
+        //                                                                                                     at  (uni-jsframework.js:1:94074)
+        //2024-11-21 17:54:41.978 25735-25800 weex                    com.example.unimpdemo                E  reportJSException >>>> instanceId:2, exception function:createInstanceContext, exception:Uncaught TypeError: Cannot read property 'setStatusBarStyle' of undefined
+        //                                                                                                     at restoreGlobal (uni-jsframework.js:1:193144)
+        //                                                                                                     at  (uni-jsframework.js:1:94074)
+        //2024-11-21 17:54:41.978 25735-25800 weex                    com.example.unimpdemo                E  onJSException -9700,Uncaught TypeError: Cannot read property 'setStatusBarStyle' of undefined
+        //                                                                                                     at restoreGlobal (uni-jsframework.js:1:193144)
+        //                                                                                                     at  (uni-jsframework.js:1:94074)
+        //2024-11-21 17:54:41.978 25735-25800 weex                    com.example.unimpdemo                E  commitCriticalExceptionRT :WX_RENDER_ERR_JS_CREATE_INSTANCE_CONTEXTexceptionwhite screen cause create instanceContext failed,check js stack ->Uncaught TypeError: Cannot read property 'setStatusBarStyle' of undefined
+        //                                                                                                     at restoreGlobal (uni-jsframework.js:1:193144)
+        //                                                                                                     at  (uni-jsframework.js:1:94074)
+        button1.setText(button1.getText() + " - 概率出现白屏");
         button1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 try {
+                    // 延迟加载 Uni-App sdk, 这里是点击 button1 的时候，在打开 uni-app 前初始化 sdk
+                    initUniAppSDK();
+                    if (!DCUniMPSDK.getInstance().isInitialize()) {
+                        Toast.makeText(mContext, "uni-app sdk 未初始化", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     UniMPOpenConfiguration uniMPOpenConfiguration = new UniMPOpenConfiguration();
-                    uniMPOpenConfiguration.splashClass = MySplashView.class;
+                    // 为了方便观察白屏现象，不设置 SplashView
+                    // uniMPOpenConfiguration.splashClass = MySplashView.class;
                     uniMPOpenConfiguration.extraData.put("darkmode", "light");
                     IUniMP uniMP = DCUniMPSDK.getInstance().openUniMP(mContext,"__UNI__F743940", uniMPOpenConfiguration);
                     mUniMPCaches.put(uniMP.getAppid(), uniMP);
@@ -391,5 +419,9 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         mUniMPCaches.clear();
+    }
+
+    private void initUniAppSDK() {
+        App.getInstance().initUniAppSDK();
     }
 }

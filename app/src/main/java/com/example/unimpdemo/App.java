@@ -28,9 +28,31 @@ import io.dcloud.uniplugin.TestText;
 
 
 public class App extends Application {
+
+    private static App sInstance;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        sInstance = this;
+    }
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        MultiDex.install(base);
+        super.attachBaseContext(base);
+    }
+
+    public static App getInstance() {
+        return sInstance;
+    }
+
+    public void initUniAppSDK() {
+        if (DCUniMPSDK.getInstance().isInitialize()) {
+            Log.i("unimp","uni-app sdk 已初始化过，不再初始化");
+            return;
+        }
+
         try {
             WXSDKEngine.registerModule("TestModule", TestModule.class);
             WXSDKEngine.registerComponent("myText", TestText.class);
@@ -53,7 +75,8 @@ public class App extends Application {
                 .setMenuDefFontColor("#ff00ff")
                 .setMenuDefFontWeight("normal")
                 .setMenuActionSheetItems(sheetItems)
-                .setEnableBackground(true)//开启后台运行
+                // 改动点: 禁用在后台运行
+                .setEnableBackground(false)
                 .setUniMPFromRecents(false)
                 .build();
         DCUniMPSDK.getInstance().initialize(this, config, new IDCUniMPPreInitCallback() {
@@ -64,11 +87,5 @@ public class App extends Application {
         });
 
         //初始化 uni小程序SDK ----end----------
-    }
-
-    @Override
-    protected void attachBaseContext(Context base) {
-        MultiDex.install(base);
-        super.attachBaseContext(base);
     }
 }
